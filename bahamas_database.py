@@ -21,17 +21,24 @@ sns.set_context('poster',font_scale=1.2)
 
 from matplotlib import pyplot as plt
 
-
-# def gallery_item(path_to_file):
-#     html=f"""
+def get_table_download_link(df,location):
+    """Generates a link allowing the data in a given panda dataframe to be downloaded
+    in:  dataframe
+    out: href string
+    """
+    csv = df.to_csv(index=False)
+    b64 = base64.b64encode(csv.encode()).decode()  # some strings <-> bytes conversions necessary here
+    href = f"""
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <a href="data:file/csv;base64,{b64}" download="{location}.csv" style='text-decoration: inherit;'>
+    <button style="background-color: DodgerBlue;border: none;color: white;padding: 12px 30px;cursor: pointer;font-size: 20px;  display: block; 
+  margin-left: auto; font-size:100%;
+  margin-right: auto;
+  width: 40%;"><i class="fa fa-download"></i> Download {location}</button>
+    </a>
     
-#     <a href="http://www.blakedyer.com/Gallery/large_bahamas/{path_to_file}" data-size="1800x1350" data-med="http://www.blakedyer.com/Gallery/med_bahamas/{path_to_file}" data-med-size="1024x768" class="demo-gallery__img--main" data-author="Blake Dyer">
-# 				<img src="http://www.blakedyer.com/Gallery/thumb_bahamas/{path_to_file}" alt="" id="thumb" />
-# 				<figure>A small cave offers shelter from the rain and a glimpse at ancient ripples </figure>
-# 			</a>
-            
-#         """
-#     return html
+    """
+    return href
 
 def gallery_item(path_to_file,w,h,timestamp):
     caption=timestamp
@@ -47,7 +54,7 @@ def gallery_item(path_to_file,w,h,timestamp):
         
     html=f"""
     
-    <a href="http://www.blakedyer.com/Gallery/large/{path_to_file}" data-size="{ws[0]}x{hs[0]}" data-med="http://www.blakedyer.com/Gallery/http://www.blakedyer.com/Gallery/med/{path_to_file}" data-med-size="{ws[1]}x{hs[1]}" class="demo-gallery__img--main" data-author="Blake Dyer">
+    <a href="http://www.blakedyer.com/Gallery/large/{path_to_file}" data-size="{ws[0]}x{hs[0]}" data-med="http://www.blakedyer.com/Gallery/http://www.blakedyer.com/Gallery/large/{path_to_file}" data-med-size="{ws[1]}x{hs[1]}" class="demo-gallery__img--main" data-author="Blake Dyer">
 				<img src="http://www.blakedyer.com/Gallery/thumb/{path_to_file}" alt="" id="thumb" />
 				<figure>{caption}</figure>
 			</a>
@@ -203,7 +210,8 @@ with st.beta_expander("Location and GPS measurements:"):
     #         'Written description of the field location'
         frame_to_show = sub_GPS[['Comment','Latitude','Longitude','Appx Height','Appx Height STD']]
         frame_to_show=frame_to_show.set_index('Comment')
-        c2.table(frame_to_show)
+        c2.write(frame_to_show)
+        c2.markdown(get_table_download_link(sub_GPS,option), unsafe_allow_html=True)
     else:
         st.write('No GPS data for this location')
 
@@ -271,62 +279,70 @@ with st.beta_expander("Orthophoto:"):
 
 
 
+
+search_term = 'None'
 with st.beta_expander("Field photos"):
+    sub_term=st.text_input("Filter keywords:", option).lower()
+    
     keywords=list(keywords)
     keywords.sort()
     keywords.insert(0,'None')
     
-    if option in keywords:
-        index=keywords.index(option)
+    filt = [key for key in keywords if sub_term in key.lower()]
+    if option in filt:
+        index=filt.index(option)
     else:
         index=0
-    search_term = st.selectbox('Keyword Search:',keywords,index)
+    result = st.selectbox('Keyword Select:',filt,index)
     
-    conn = sqlite3.connect('lib_from_darktable.db')
-    c = conn.cursor()
-    
-    sqlite_select_query = "SELECT filename, w, h, timestamp FROM photos WHERE keywords LIKE ?"
-    c.execute(sqlite_select_query,('%'+search_term+'%',))
-    data=c.fetchall()
-    COLUMN=0
-    file_subset=[elt[COLUMN] for elt in data]
-    COLUMN=1
-    file_ws=[int.from_bytes(elt[COLUMN],byteorder='little') for elt in data]
-    COLUMN=2
-    file_hs=[int.from_bytes(elt[COLUMN],byteorder='little') for elt in data]
-    COLUMN=3
-    file_caption=[elt[COLUMN] for elt in data]
-    
-    conn.close()
- 
-
-    if (len(file_subset)>1):
+    if st.button('Load photos'):
+        search_term = result
         
-        gallery = ''
-        for f,w,h,c in zip(file_subset,file_ws,file_hs,file_caption):
+        conn = sqlite3.connect('lib_from_darktable.db')
+        c = conn.cursor()
 
-            gallery+=gallery_item(f,w,h,c)
+        sqlite_select_query = "SELECT filename, w, h, timestamp FROM photos WHERE keywords LIKE ?"
+        c.execute(sqlite_select_query,('%'+search_term+'%',))
+        data=c.fetchall()
+        COLUMN=0
+        file_subset=[elt[COLUMN] for elt in data]
+        COLUMN=1
+        file_ws=[int.from_bytes(elt[COLUMN],byteorder='little') for elt in data]
+        COLUMN=2
+        file_hs=[int.from_bytes(elt[COLUMN],byteorder='little') for elt in data]
+        COLUMN=3
+        file_caption=[elt[COLUMN] for elt in data]
 
-
-        mid=f"""
-        
-                <div id="demo-test-gallery" class="demo-gallery">
-
-                    {gallery}
-
-                </div>
-            
-        """
-
-        HtmlFile = open("gallery_pre.html", 'r', encoding='utf-8')
-        source_code_pre = HtmlFile.read() 
-
-        HtmlFile = open("gallery_post.html", 'r', encoding='utf-8')
-        source_code_post = HtmlFile.read() 
+        conn.close()
 
 
-        components.html(source_code_pre+mid+source_code_post,scrolling=True,height=600
-        )
+        if (len(file_subset)>1):
+
+            gallery = ''
+            for f,w,h,c in zip(file_subset,file_ws,file_hs,file_caption):
+
+                gallery+=gallery_item(f,w,h,c)
+
+
+            mid=f"""
+
+                    <div id="demo-test-gallery" class="demo-gallery">
+
+                        {gallery}
+
+                    </div>
+
+            """
+
+            HtmlFile = open("gallery_pre.html", 'r', encoding='utf-8')
+            source_code_pre = HtmlFile.read() 
+
+            HtmlFile = open("gallery_post.html", 'r', encoding='utf-8')
+            source_code_post = HtmlFile.read() 
+
+
+            components.html(source_code_pre+mid+source_code_post,scrolling=True,height=600
+            )
 
 #         image_iterator = paginator("Navigate images of field location", file_subset, items_per_page=6*5, on_sidebar=False)
 
@@ -340,17 +356,17 @@ with st.beta_expander("Field photos"):
 #             i=(i%6)*2+1
 #             with cols[i]:
 #                 st.image(j,use_column_width=True,caption=j.split('/')[-1])
-    elif (len(file_subset)>0):
-        
-        page_format_func = lambda i: "Image "+str(i)
-        
-        selected_photo = 0
-            
-        j=file_subset[selected_photo]
-        st.image(j,use_column_width=True,caption=j.split('/')[-1])
+        elif (len(file_subset)>0):
 
-    else:
-        'No photos available for section '+str(option)
+            page_format_func = lambda i: "Image "+str(i)
+
+            selected_photo = 0
+
+            j=file_subset[selected_photo]
+            st.image(j,use_column_width=True,caption=j.split('/')[-1])
+
+        else:
+            'No photos available for section '+str(option)
 
 # pick_img = st.sidebar.radio("Which image?", 
 #            [x for x in range(1, len(images_on_page))])
