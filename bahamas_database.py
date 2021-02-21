@@ -36,7 +36,7 @@ from matplotlib import pyplot as plt
 def gallery_item(path_to_file,w,h,timestamp):
     caption=timestamp
     
-    path_to_file='/'+path_to_file
+#     path_to_file=path_to_file
     aspect_ratio = w/h
     if w>h:
         ws=[1800,1024]
