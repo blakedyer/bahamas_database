@@ -299,7 +299,7 @@ with st.beta_expander("Field photos"):
     
     conn.close()
  
-    
+
     if (len(file_subset)>1):
         
         gallery = ''
@@ -396,7 +396,7 @@ with st.beta_expander("Field photos"):
 # components.html(source_code,scrolling=True,height=600
 # )
 with st.beta_expander("3D Asset (testing)"):
-    components.iframe("http://www.blakedyer.com/models/B701.html",height=600)
+    components.iframe("http://www.blakedyer.com/models/B1112.html",height=600)
 
 
 
