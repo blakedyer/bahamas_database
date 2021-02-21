@@ -8,6 +8,7 @@ email = \"blakedyer@uvic.ca\"\n\
 echo "\
 [server]\n\
 headless = true\n\
-enableCORS=false\n\
+enableCORS=true\n\
+enableXsrfProtection=false\n\
 port = $PORT\n\
 " > ~/.streamlit/config.toml
